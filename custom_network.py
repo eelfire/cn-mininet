@@ -6,8 +6,8 @@
     https://stackoverflow.com/questions/46595423/mininet-how-to-create-a-topology-with-two-routers-and-their-respective-hosts
 """
 
+import sys
 from time import sleep
-from sys import argv
 from mininet.topo import Topo
 from mininet.net import Mininet
 from mininet.node import Host
@@ -72,55 +72,40 @@ class CustomTopology(Topo):
                      params1={'ip': '10.100.31.3/24'}, params2={'ip': '10.100.31.1/24'})
 
 
-def run(long_path=0):
+def run(is_long_path=0):
     topo = CustomTopology()
     net = Mininet(topo=topo, waitConnected=True)
     net.start()
 
-    # info('--- Routing Table on Router:\n')
+    # add routes for reaching networks that aren't directly connected
     info(net['ra'].cmd('ip route add 10.2.0.0/24 via 10.100.12.2 dev ra-ethb'))
-    # info(net['ra'].cmd('ip route add 10.3.0.0/24 via 10.100.31.3 dev ra-ethc'))
-    # info(net['ra'].cmd('ip route add 10.3.0.0/24 via 10.100.12.2 dev ra-ethb'))
-
     info(net['rb'].cmd('ip route add 10.1.0.0/24 via 10.100.12.1 dev rb-etha'))
     info(net['rb'].cmd('ip route add 10.3.0.0/24 via 10.100.23.3 dev rb-ethc'))
-
-    # info(net['rc'].cmd('ip route add 10.1.0.0/24 via 10.100.31.1 dev rc-etha'))
-    # info(net['rc'].cmd('ip route add 10.1.0.0/24 via 10.100.23.2 dev rc-ethb'))
     info(net['rc'].cmd('ip route add 10.2.0.0/24 via 10.100.23.2 dev rc-ethb'))
 
-    if (long_path == 0):
+    if not is_long_path:
         info(net['ra'].cmd('ip route add 10.3.0.0/24 via 10.100.31.3 dev ra-ethc'))
         info(net['rc'].cmd('ip route add 10.1.0.0/24 via 10.100.31.1 dev rc-etha'))
-    elif (long_path == 1):
+    else:
         info(net['ra'].cmd('ip route add 10.3.0.0/24 via 10.100.12.2 dev ra-ethb'))
         info(net['rc'].cmd('ip route add 10.1.0.0/24 via 10.100.23.2 dev rc-ethb'))
-        
-    info('--- Routes on ra:\n')
+
+    print('--- Routes on ra: ---')
     info(net['ra'].cmd('ip route show | column -t | tee ra_routes.txt'))
-    info('--- Routes on rb:\n')
+    print('--- Routes on rb: ---')
     info(net['rb'].cmd('ip route show | column -t | tee rb_routes.txt'))
-    info('--- Routes on rc:\n')
+    print('--- Routes on rc: ---')
     info(net['rc'].cmd('ip route show | column -t | tee rc_routes.txt'))
 
-    info('--- --- ---\n')
-
-    # Outdated route output format
-    # info('\nRouting tables of ra:\n')
-    # info(net['ra'].cmd('route'))
-    # info('\nRouting tables of rb:\n')
-    # info(net['rb'].cmd('route'))
-    # info('\nRouting tables of rc:\n')
-    # info(net['rc'].cmd('route'))
-
-    if (long_path == 0):
-        info('--- Starting tcpdump on ra, rb, rc\n')
+    if not is_long_path:
+        print('--- --- ---\n')
+        info('--- Starting tcpdump on ra, rb, rc ---\n')
         ra_pcap = net['ra'].popen('tcpdump -i any -w ra_capture.pcap')
         rb_pcap = net['rb'].popen('tcpdump -i any -w rb_capture.pcap')
         rc_pcap = net['rc'].popen('tcpdump -i any -w rc_capture.pcap')
         sleep(1)
 
-        info('--- Running pingAll()\n')
+        info('--- Running pingAll() ---\n')
         net.pingAll()
         sleep(1)
 
@@ -128,41 +113,33 @@ def run(long_path=0):
         rb_pcap.terminate()
         rc_pcap.terminate()
 
-        # ping h1 -> h6 for 5 seconds
-        # net.ping([net['h1'], net['h6']], timeout=5)
-        print('\n--- --- ---')
+        print('--- --- ---\n')
         print('*** h1 -> ra -> rc -> h6')
-        print('ping h1 -> h6 for 10 counts')
-        info(net['h1'].cmd('ping -c 10 10.3.0.20'))
-
-        # iperf h1 h6
-        # net.iperf((net['h1'], net['h6']))
-        net['h6'].cmd('iperf -s &')
-        sleep(1)
-        print('iperf h1 -> h6 for 10 seconds')
-        info(net['h1'].cmd('iperf -c 10.3.0.20 -t 10'))
-        net['h6'].cmd('kill %iperf')
     else:
-        # h6_pcap = net['h6'].popen('tcpdump -i any -w h6.pcap')
-        # CLI(net)
-        # net.iperf((net['h1'], net['h6']))
-        # h6_pcap.terminate()
-        print('\n--- --- ---')
-        print('*** h1 -> ra -> rb -> rc -> h6\n')
-        print('ping h1 -> h6 for 10 counts')
-        info(net['h1'].cmd('ping -c 10 10.3.20'))
-        print()
+        print('--- --- ---\n')
+        print('*** h1 -> ra -> rb -> rc -> h6')
 
-        net['h6'].cmd('iperf -s &')
-        sleep(1)
-        print('iperf h1 -> h6 for 10 seconds')
-        info(net['h1'].cmd('iperf -c 10.3.0.20 -t 10'))
-        net['h6'].cmd('kill %iperf')
+    # ping h1 -> h6
+    print('ping h1 -> h6 for 10 counts')
+    info(net['h1'].cmd('ping -c 10 10.3.0.20'))
+
+    # iperf h1 h6
+    print('--- --- ---\n')
+    print('iperf h1 -> h6 for 10 seconds')
+    net['h6'].cmd('iperf -s &')
+    sleep(1)
+    info(net['h1'].cmd('iperf -c 10.3.0.20 -t 10'))
+    net['h6'].cmd('kill %iperf')
+
+    print('--- --- ---\n')
 
     net.stop()
 
 
 if __name__ == '__main__':
     setLogLevel('info')
-    long_path = int(argv[1]) # 0 for short path (h1 -> ra -> rc -> h6), 1 for long path (h1 -> ra -> rb -> rc -> h6)
-    run(long_path)
+    # 0 for short path (h1 -> ra -> rc -> h6), 1 for long path (h1 -> ra -> rb -> rc -> h6)
+    is_long_path = 0
+    if len(sys.argv) > 1:
+        is_long_path = int(sys.argv[1])
+    run(is_long_path)
