@@ -15,36 +15,33 @@ from mininet.node import Node
 from mininet.log import setLogLevel, info
 from mininet.cli import CLI
 
-class LinuxRouter( Node ):
+
+class LinuxRouter(Node):
     "A Node with IP forwarding enabled."
 
-    # pylint: disable=arguments-differ
-    def config( self, **params ):
-        super( LinuxRouter, self).config( **params )
+    def config(self, **params):
+        super(LinuxRouter, self).config(**params)
         # Enable forwarding on the router
-        self.cmd( 'sysctl net.ipv4.ip_forward=1' )
+        self.cmd('sysctl net.ipv4.ip_forward=1')
 
-    def terminate( self ):
-        self.cmd( 'sysctl net.ipv4.ip_forward=0' )
-        super( LinuxRouter, self ).terminate()
+    def terminate(self):
+        self.cmd('sysctl net.ipv4.ip_forward=0')
+        super(LinuxRouter, self).terminate()
 
-class CustomTopology( Topo ):
+
+class CustomTopology(Topo):
     def build(self, **_opts):
         # add routers
         ra = self.addNode('ra', cls=LinuxRouter, ip='10.1.0.1/24')
         rb = self.addNode('rb', cls=LinuxRouter, ip='10.2.0.1/24')
         rc = self.addNode('rc', cls=LinuxRouter, ip='10.3.0.1/24')
 
-        # add switches
+        # add corresponding switches for each router
         sa = self.addSwitch('s1')
         sb = self.addSwitch('s2')
         sc = self.addSwitch('s3')
 
-        self.addLink(sa, ra, intfName2='ra-ethsa', param2={'ip': '10.1.0.1/24'})
-        self.addLink(sb, rb, intfName2='rb-ethsb', param2={'ip': '10.2.0.1/24'})
-        self.addLink(sc, rc, intfName2='rc-ethsc', param2={'ip': '10.3.0.1/24'})
-
-        # add hosts
+        # add hosts & configure their IP
         h1 = self.addHost('h1', ip='10.1.0.10/24', defaultRoute='via 10.1.0.1')
         h2 = self.addHost('h2', ip='10.1.0.20/24', defaultRoute='via 10.1.0.1')
         h3 = self.addHost('h3', ip='10.2.0.10/24', defaultRoute='via 10.2.0.1')
@@ -52,7 +49,7 @@ class CustomTopology( Topo ):
         h5 = self.addHost('h5', ip='10.3.0.10/24', defaultRoute='via 10.3.0.1')
         h6 = self.addHost('h6', ip='10.3.0.20/24', defaultRoute='via 10.3.0.1')
 
-        # add links 
+        # add links
         self.addLink(h1, sa)
         self.addLink(h2, sa)
         self.addLink(h3, sb)
@@ -60,9 +57,19 @@ class CustomTopology( Topo ):
         self.addLink(h5, sc)
         self.addLink(h6, sc)
 
-        self.addLink(ra, rb, intfName1='ra-ethb', intfName2='rb-etha', params1={'ip': '10.100.12.1/24'}, params2={'ip': '10.100.12.2/24'})
-        self.addLink(rb, rc, intfName1='rb-ethc', intfName2='rc-ethb', params1={'ip': '10.100.23.2/24'}, params2={'ip': '10.100.23.3/24'})
-        self.addLink(rc, ra, intfName1='rc-etha', intfName2='ra-ethc', params1={'ip': '10.100.31.3/24'}, params2={'ip': '10.100.31.1/24'})
+        self.addLink(sa, ra, intfName2='ra-ethsa',
+                     param2={'ip': '10.1.0.1/24'})
+        self.addLink(sb, rb, intfName2='rb-ethsb',
+                     param2={'ip': '10.2.0.1/24'})
+        self.addLink(sc, rc, intfName2='rc-ethsc',
+                     param2={'ip': '10.3.0.1/24'})
+
+        self.addLink(ra, rb, intfName1='ra-ethb', intfName2='rb-etha',
+                     params1={'ip': '10.100.12.1/24'}, params2={'ip': '10.100.12.2/24'})
+        self.addLink(rb, rc, intfName1='rb-ethc', intfName2='rc-ethb',
+                     params1={'ip': '10.100.23.2/24'}, params2={'ip': '10.100.23.3/24'})
+        self.addLink(rc, ra, intfName1='rc-etha', intfName2='ra-ethc',
+                     params1={'ip': '10.100.31.3/24'}, params2={'ip': '10.100.31.1/24'})
 
 
 def run(long_path=0):
@@ -90,26 +97,27 @@ def run(long_path=0):
         info(net['rc'].cmd('ip route add 10.1.0.0/24 via 10.100.23.2 dev rc-ethb'))
         
     info('--- Routes on ra:\n')
-    info(net['ra'].cmd('ip route'))
+    info(net['ra'].cmd('ip route show | column -t | tee ra_routes.txt'))
     info('--- Routes on rb:\n')
-    info(net['rb'].cmd('ip route'))
+    info(net['rb'].cmd('ip route show | column -t | tee rb_routes.txt'))
     info('--- Routes on rc:\n')
-    info(net['rc'].cmd('ip route'))
+    info(net['rc'].cmd('ip route show | column -t | tee rc_routes.txt'))
 
     info('--- --- ---\n')
 
-    info('\nRouting tables of ra:\n')
-    info(net['ra'].cmd('route'))
-    info('\nRouting tables of rb:\n')
-    info(net['rb'].cmd('route'))
-    info('\nRouting tables of rc:\n')
-    info(net['rc'].cmd('route'))
+    # Outdated route output format
+    # info('\nRouting tables of ra:\n')
+    # info(net['ra'].cmd('route'))
+    # info('\nRouting tables of rb:\n')
+    # info(net['rb'].cmd('route'))
+    # info('\nRouting tables of rc:\n')
+    # info(net['rc'].cmd('route'))
 
     if (long_path == 0):
         info('--- Starting tcpdump on ra, rb, rc\n')
-        ra_pcap = net['ra'].popen('tcpdump -i any -w ra.pcap')
-        rb_pcap = net['rb'].popen('tcpdump -i any -w rb.pcap')
-        rc_pcap = net['rc'].popen('tcpdump -i any -w rc.pcap')
+        ra_pcap = net['ra'].popen('tcpdump -i any -w ra_capture.pcap')
+        rb_pcap = net['rb'].popen('tcpdump -i any -w rb_capture.pcap')
+        rc_pcap = net['rc'].popen('tcpdump -i any -w rc_capture.pcap')
         sleep(1)
 
         info('--- Running pingAll()\n')
@@ -152,7 +160,8 @@ def run(long_path=0):
         net['h6'].cmd('kill %iperf')
 
     net.stop()
-    
+
+
 if __name__ == '__main__':
     setLogLevel('info')
     long_path = int(argv[1]) # 0 for short path (h1 -> ra -> rc -> h6), 1 for long path (h1 -> ra -> rb -> rc -> h6)
