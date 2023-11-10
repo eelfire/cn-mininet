@@ -133,7 +133,7 @@ def run(long_path=0):
         print('\n--- --- ---')
         print('*** h1 -> ra -> rc -> h6')
         print('ping h1 -> h6 for 10 counts')
-        info(net['h1'].cmd('ping -c 10 10.3.20'))
+        info(net['h1'].cmd('ping -c 10 10.3.0.20'))
 
         # iperf h1 h6
         # net.iperf((net['h1'], net['h6']))
