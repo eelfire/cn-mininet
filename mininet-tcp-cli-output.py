@@ -1,5 +1,4 @@
 import argparse
-from multiprocessing import Process
 from time import sleep
 
 from mininet.topo import Topo
@@ -29,11 +28,12 @@ class CustomTopology(Topo):
 
 
 def start_iperf_server(host):
-    host.cmd('iperf -s > iperf.txt &')
+    host.cmd('iperf -s &')
 
 def run_iperf_client(client, server, congestion, config, link_loss):
-    iperf_cmd = f'sudo iperf -c {server.IP()} --linux-congestion {congestion} -e -i 0.5 -t 10 -y C> csv/{client}-{config}-{int(link_loss)}-{congestion}.csv'
-    client.cmd(iperf_cmd)
+    iperf_cmd = f'sudo iperf -c {server.IP()} --linux-congestion {congestion} -e -i 0.5 -t 10'
+    result = client.cmd(iperf_cmd)
+    return result
 
 # def tcp_server(host):
 #     start_iperf_server(host)
@@ -55,27 +55,24 @@ if __name__ == "__main__":
     # h1_pcap = net['h1'].popen('tcpdump -i any -w h1.pcap')
 
     # CLI(net)
+    result = None
     start_iperf_server(net.get('h4'))
     sleep(2)
 
-    print(f"Analysis for configuration {args.config} with {args.congestion}")
-
     # Run experiments
-    if args.config == "b" or args.config == "d":
-        run_iperf_client(net.get('h1'), net.get('h4'), args.congestion, args.config, args.link_loss)
+    if args.config == "b":
+        result = run_iperf_client(net.get('h1'), net.get('h4'), args.congestion, args.config, args.link_loss)
 
     elif args.config == "c":
-        # run iperf_client simultaneously on h1, h2, h3
-        h1 = Process(target=run_iperf_client, args=(net.get('h1'), net.get('h4'), args.congestion, args.config, args.link_loss))
-        h2 = Process(target=run_iperf_client, args=(net.get('h2'), net.get('h4'), args.congestion, args.config, args.link_loss))
-        h3 = Process(target=run_iperf_client, args=(net.get('h3'), net.get('h4'), args.congestion, args.config, args.link_loss))
-        h1.start()
-        h2.start()
-        h3.start()
-        h1.join()
-        h2.join()
-        h3.join()
+        result = run_iperf_client(net.get('h1'), net.get('h4'), args.congestion, args.config, args.link_loss) + '\n' + run_iperf_client(net.get('h2'), net.get('h4'), args.congestion, args.config, args.link_loss) + '\n' + run_iperf_client(net.get('h3'), net.get('h4'), args.congestion, args.config, args.link_loss)
 
+    elif args.config == "d":
+        # Configure link loss on s1-s2
+        net.link('s1-eth3', 's2-eth2', loss=args.link_loss)
+        result = run_iperf_client(net.get('h1'), net.get('h4'), args.congestion, args.config, args.link_loss)
+
+    print(f"Throughput for configuration {args.config} with {args.congestion}:\n{result}")
+    
     sleep(1)
     # h1_pcap.terminate()
 
