@@ -120,12 +120,17 @@ def run(is_long_path=0):
         print('*** h1 -> ra -> rb -> rc -> h6')
 
     # ping h1 -> h6
-    print('ping h1 -> h6 for 10 counts')
+    print('*** ping h1 -> h6 for 10 counts')
     info(net['h1'].cmd('ping -c 10 10.3.0.20'))
+
+    # traceroute h1 -> h6
+    print('--- --- ---\n')
+    print('*** traceroute h1 -> h6')
+    info(net['h1'].cmd('traceroute 10.3.0.20'))
 
     # iperf h1 h6
     print('--- --- ---\n')
-    print('iperf h1 -> h6 for 10 seconds')
+    print('*** iperf h1 -> h6 for 10 seconds')
     net['h6'].cmd('iperf -s &')
     sleep(1)
     info(net['h1'].cmd('iperf -c 10.3.0.20 -t 10'))
