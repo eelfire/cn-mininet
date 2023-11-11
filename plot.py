@@ -38,14 +38,14 @@ def plot_csv(config, host, link_loss):
     for csv_file in csv_files:
         data = parse_csv(csv_file)
         times = [data_point['end_time'] for data_point in data]
-        bandwidths = [data_point['bandwidth']/1e9 for data_point in data]
+        bandwidths = [data_point['bandwidth']/1e6 for data_point in data]
         label = csv_file.split('.')[0].split('-')[3]
 
         plt.plot(times, bandwidths, marker='o', label=label)
 
     plt.title('Bandwidth vs. Time')
     plt.xlabel('Time (seconds)')
-    plt.ylabel('Bandwidth (Gbits/sec)')
+    plt.ylabel('Bandwidth (Mbits/sec)')
     plt.grid(True, linestyle='--')
     plt.legend()
     # plt.show()

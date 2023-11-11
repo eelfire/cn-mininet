@@ -1,4 +1,5 @@
 import argparse
+import os
 from multiprocessing import Process
 from time import sleep
 
@@ -52,7 +53,10 @@ if __name__ == "__main__":
     net = Mininet(topo=topology, host=CPULimitedHost, link=TCLink)
     net.start()
 
-    # h1_pcap = net['h1'].popen('tcpdump -i any -w h1.pcap')
+    os.system('mkdir -p pcap')
+    h1_pcap = net['h1'].popen(f'tcpdump -i any -w pcap/h1-{args.config}-{int(args.link_loss)}-{args.congestion}.pcap')
+    h2_pcap = net['h2'].popen(f'tcpdump -i any -w pcap/h2-{args.config}-{int(args.link_loss)}-{args.congestion}.pcap')
+    h3_pcap = net['h3'].popen(f'tcpdump -i any -w pcap/h3-{args.config}-{int(args.link_loss)}-{args.congestion}.pcap')
     h4_pcap = net['h4'].popen(f'tcpdump -i any -w pcap/h4-{args.config}-{int(args.link_loss)}-{args.congestion}.pcap')
 
     # CLI(net)
@@ -78,8 +82,10 @@ if __name__ == "__main__":
         h3.join()
 
     sleep(2)
+    h1_pcap.terminate()
+    h2_pcap.terminate()
+    h3_pcap.terminate()
     h4_pcap.terminate()
-    # h1_pcap.terminate()
 
     # stop iperf server
     net['h4'].cmd('killall iperf')
