@@ -20,12 +20,12 @@ class CustomTopology(Topo):
         h3 = self.addHost('h3')
         h4 = self.addHost('h4')
 
-        self.addLink(h1, s1)
-        self.addLink(h2, s1)
-        self.addLink(h3, s2)
-        self.addLink(h4, s2)
+        self.addLink(h1, s1, bw=100)
+        self.addLink(h2, s1, bw=100)
+        self.addLink(h3, s2, bw=100)
+        self.addLink(h4, s2, bw=100)
 
-        self.addLink(s1, s2, loss=link_loss)
+        self.addLink(s1, s2, loss=link_loss, bw=100)
 
 
 def start_iperf_server(host):
@@ -53,6 +53,7 @@ if __name__ == "__main__":
     net.start()
 
     # h1_pcap = net['h1'].popen('tcpdump -i any -w h1.pcap')
+    h4_pcap = net['h4'].popen(f'tcpdump -i any -w pcap/h4-{args.config}-{int(args.link_loss)}-{args.congestion}.pcap')
 
     # CLI(net)
     start_iperf_server(net.get('h4'))
@@ -76,7 +77,8 @@ if __name__ == "__main__":
         h2.join()
         h3.join()
 
-    sleep(1)
+    sleep(2)
+    h4_pcap.terminate()
     # h1_pcap.terminate()
 
     # stop iperf server
